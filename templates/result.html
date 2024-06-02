@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Info</title>
+    <!-- Подключаем Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <style>
+        body {
+            padding: 20px;
+            background-color: #f8f9fa; /* Цвет фона */
+        }
+        .user-card {
+            margin-bottom: 20px;
+            background-color: #fff; /* Цвет фона карточки */
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* Тень */
+            padding: 20px;
+            transition: transform 0.2s;
+        }
+        .user-card:hover {
+            transform: scale(1.02);
+        }
+        .user-img {
+            max-width: 200px;
+            max-height: 200px;
+            display: block;
+            margin: 0 auto 20px;
+            border-radius: 50%; /* Круглое изображение */
+            overflow: hidden;
+        }
+        .user-info p {
+            margin-bottom: 5px;
+        }
+        .user-info p strong {
+            font-weight: bold;
+        }
+        #groupTable {
+            display: none; /* Скрываем таблицу по умолчанию */
+        }
+        #loadingText {
+            display: none; /* Скрываем текст загрузки по умолчанию */
+            font-size: 1.2em;
+            color: #007bff;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        #getGroupsButton, #getPostsButton {
+            transition: background-color 0.3s ease;
+        }
+        #getGroupsButton:hover, #getPostsButton:hover {
+            background-color: #0056b3; /* Изменение цвета при наведении */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">Информация о пользователе</h1>
+        <a href="/" class="btn btn-outline-secondary mb-4">Home</a>
+        <div class="user-card">
+            <div class="text-center">
+                <div style="max-width: 200px; max-height: 200px; display: inline-block;">
+                    <img src="{{ user_info.photo_max }}" class="user-img" alt="User Photo" style="object-fit: cover;">
+                </div>
+            </div>
+            <div class="card-body user-info">
+                <p class="card-text"><strong>Имя:</strong> {{ user_info.first_name }} {{ user_info.last_name }}</p>
+                <p id='id' class="card-text"><strong>ID:</strong> {{ user_info.id }}</p>
+                <p class="card-text"><strong>Короткий адрес страницы:</strong> {{ user_info.domain}}</p>
+                <p class="card-text"><strong>Пол:</strong> {{ user_info.sex }}</p>
+                <p class="card-text"><strong>Дата рождения:</strong> {{ user_info.bdate }}</p>
+                <p class="card-text"><strong>Город:</strong> {{ user_info.city.title }}</p>
+                <p class="card-text"><strong>Страна:</strong> {{ user_info.country.title }}</p>
+                <p class="card-text"><strong>Профиль:</strong> {{ user_info.is_closed }}</p>
+                <p class="card-text"><strong>Количество друзей:</strong> {{ user_info.counters.friends }}</p>
+                <p class="card-text"><strong>Количество сообществ:</strong> {{ user_info.counters.groups }}</p>
+                <p class="card-text"><strong>Количество фотографий:</strong> {{ user_info.counters.photos }}</p>
+            </div>
+            <button id="getGroupsButton" class="btn btn-primary mt-4">Получить данные о группах пользователя</button>
+                      <form action="/user/{{ user_info.id }}/posts" method="GET">
+            <button id="getPostsButton" class="btn btn-primary mt-4">Получить записи со стены</button>
+                            </form>
+            <table id="groupTable" class="table mt-4">
+                <thead>
+                    <tr>
+                        <th>Категория</th>
+                        <th>Количество групп данной категории</th>
+                        <th>Проценты</th>
+                    </tr>
+                </thead>
+                <tbody id="groupTableBody"></tbody>
+            </table>
+            <div id="loadingText" class="text-center">
+                <p>Загрузка и анализ данных о группах пользователя...</p>
+            </div>
+        </div>
+    </div>
+    <!-- Подключаем Bootstrap JS и jQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        // Функция для отправки запроса к серверу и получения данных о группах пользователя
+        function getUserGroups(userId) {
+            // Показываем текст "Идёт загрузка и анализ данных о группах пользователя"
+            document.getElementById('loadingText').style.display = 'block';
+
+            // Отправляем AJAX-запрос к серверу, чтобы получить данные о группах пользователя
+            fetch('/get_groups', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ user_id: userId })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(groupsData => {
+                // Отладочная информация
+                console.log('Получены данные о группах пользователя:', groupsData);
+
+                // Обновляем таблицу с данными о группах пользователя
+                updateGroupTable(groupsData);
+
+                // Скрываем текст "Идёт загрузка и анализ данных о группах пользователя"
+                document.getElementById('loadingText').style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Ошибка при получении данных о группах пользователя:', error);
+                // Обработка ошибки здесь
+                document.getElementById('loadingText').style.display = 'none';
+            });
+        }
+
+        // Функция для обновления таблицы с данными о группах пользователя
+        function updateGroupTable(groupsData) {
+            var tableBody = document.getElementById('groupTableBody');
+            tableBody.innerHTML = ''; // Очищаем содержимое tbody
+
+            // Заполняем таблицу данными о группах пользователя
+            groupsData.forEach(function(group) {
+                var row = '<tr><td>' + group[0] + '</td><td>' + group[1] + '</td><td>' + group[2].toFixed(2) + '%</td></tr>';
+                tableBody.innerHTML += row;
+            });
+
+            // Показываем таблицу
+            document.getElementById('groupTable').style.display = 'table';
+        }
+
+        // Назначаем обработчик события клика на кнопку
+        document.getElementById('getGroupsButton').addEventListener('click', function() {
+            // Получаем ID пользователя из HTML
+            var userId = document.getElementById('id').innerText.split(':')[1].trim();
+
+            // Вызываем функцию для получения данных о группах пользователя
+            getUserGroups(userId);
+        });
+    </script>
+</body>
+</html>

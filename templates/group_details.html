@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Group Details</title>
+    <!-- Подключение стилей Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .card {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: scale(1.02);
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border: none;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        .btn-outline-secondary {
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .btn-outline-secondary:hover {
+            background-color: #6c757d;
+            color: white;
+        }
+        #progressBarContainer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+        #loadingText {
+            font-size: 1.2em;
+            color: #007bff;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <a href="/" class="btn btn-outline-secondary mb-4">Home</a>
+
+        <h2 class="text-center mb-4">Информация о группе</h2>
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div style="display: flex; justify-content: center; align-items: center; height: 200px;"> <!-- Обертка для центрирования -->
+                        <img src="{{ group_info.photo_200 }}" class="card-img-top" alt="Group Photo" style="max-width: 200px; max-height: 200px; border-radius: 50%;">
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title text-center">{{ group_info.name }}</h5>
+                        <p class="card-text"><strong>Описание:</strong> {{ group_info.description }}</p>
+                        <p class="card-text"><strong>Количество подписчиков:</strong> {{ group_info.members_count }}</p>
+                        <form id="dateForm">
+                            <div class="form-group">
+                                <label for="startDate">Начальная дата:</label>
+                                <input type="date" class="form-control" id="startDate" name="startDate" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="endDate">Конечная дата:</label>
+                                <input type="date" class="form-control" id="endDate" name="endDate" required>
+                            </div>
+                            <!-- Скрытое поле для передачи ID группы -->
+                            <input type="hidden" id="groupId" name="groupId" value="{{ group_info.id }}">
+                            <div class="row justify-content-center mt-4">
+                                <div class="col-md-10">
+                                    <div class="btn-group btn-group-lg w-100" role="group" aria-label="Data Buttons">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary mr-2" onclick="getDataForMonth()">За месяц</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary mr-2" onclick="getDataForQuarter()">За квартал</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary mr-2" onclick="getDataForHalfYear()">За полугодие</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="getDataForYear()">За год</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row justify-content-center mt-4">
+                                <div class="col-md-10">
+                                    <button type="button" class="btn btn-lg btn-primary w-100" id="getStatsButton" onclick="getStats()" disabled>Получить статистику за период</button>
+                                </div>
+                            </div>
+                        </form>
+                        <div style="text-align: center; margin-top: 20px;">
+                            <form action="/group/{{ group_info.id }}/posts" method="GET">
+                                <button type="submit" class="btn btn-lg btn-primary">Получить посты</button>
+                            </form>
+                        </div>
+                        <div id="progressBarContainer"></div>
+                        <!-- Контейнер для отображения статистики записей (по умолчанию скрыт) -->
+                        <div id="statsContainer" style="display: none; margin-top: 20px;">
+                            <h5>Статистика по записям в группе за выбранный промежуток времени:</h5>
+                            <table class="table">
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Количество постов:</strong></td>
+                                        <td><span id="totalPosts"></span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Количество лайков:</strong></td>
+                                        <td><span id="totalLikes"></span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Количество комментариев:</strong></td>
+                                        <td><span id="totalComments"></span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Количество просмотров:</strong></td>
+                                        <td><span id="totalViews"></span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Среднее количество лайков на пост:</strong></td>
+                                        <td><span id="averageLikesPerPost"></span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Среднее количество комментариев на пост:</strong></td>
+                                        <td><span id="averageCommentsPerPost"></span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Среднее количество просмотров на пост:</strong></td>
+                                        <td><span id="averageViewsPerPost"></span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Коэффициент вовлеченности (Engagement Rate):</strong></td>
+                                        <td><span id="engagementRate"></span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Коэффициент вовлеченности на пост (Post Engagement Rate):</strong></td>
+                                        <td><span id="postEngagementRate"></span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Подключение скриптов Bootstrap и jQuery (необходимо для работы некоторых компонентов Bootstrap) -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        function getStats() {
+            var startDate = document.getElementById('startDate').value;
+            var endDate = document.getElementById('endDate').value;
+            var groupId = document.getElementById('groupId').value;
+            var progressBarContainer = document.getElementById('progressBarContainer');
+            progressBarContainer.innerHTML = '<div id="loadingText">Загрузка данных...</div>';
+
+            $.post("/get_stats_for_period", {
+                startDate: startDate,
+                endDate: endDate,
+                groupId: groupId
+            }, function(data, status){
+                progressBarContainer.innerHTML = '';
+
+                document.getElementById('totalPosts').innerText = data.totalPosts;
+                document.getElementById('totalLikes').innerText = data.totalLikes;
+                document.getElementById('totalComments').innerText = data.totalComments;
+                document.getElementById('totalViews').innerText = data.totalViews;
+                document.getElementById('averageLikesPerPost').innerText = data.averageLikesPerPost;
+                document.getElementById('averageCommentsPerPost').innerText = data.averageCommentsPerPost;
+                document.getElementById('averageViewsPerPost').innerText = data.averageViewsPerPost;
+                document.getElementById('engagementRate').innerText = data.engagementRate;
+                document.getElementById('postEngagementRate').innerText = data.postEngagementRate;
+
+                document.getElementById('statsContainer').style.display = 'block';
+            });
+        }
+
+        function getDataForMonth() {
+            var today = new Date();
+            var startDate = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+            var endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            setDates(startDate, endDate);
+            sendRequest(startDate, endDate);
+        }
+
+        function getDataForQuarter() {
+            var today = new Date();
+            var startDate = new Date(today.getFullYear(), today.getMonth() - 3, today.getDate());
+            var endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            setDates(startDate, endDate);
+            sendRequest(startDate, endDate);
+        }
+
+        function getDataForHalfYear() {
+            var today = new Date();
+            var startDate = new Date(today.getFullYear(), today.getMonth() - 6, today.getDate());
+            var endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            setDates(startDate, endDate);
+            sendRequest(startDate, endDate);
+        }
+
+        function getDataForYear() {
+            var today = new Date();
+            var startDate = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
+            var endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            setDates(startDate, endDate);
+            sendRequest(startDate, endDate);
+        }
+
+        function setDates(startDate, endDate) {
+            // Преобразуем даты в строковый формат для установки значений в виджеты
+            var startDateString = formatDate(startDate);
+            var endDateString = formatDate(endDate);
+
+            // Устанавливаем значения дат в виджеты
+            document.getElementById('startDate').value = startDateString;
+            document.getElementById('endDate').value = endDateString;
+        }
+
+        function sendRequest(startDate, endDate) {
+            var groupId = document.getElementById('groupId').value;
+            var progressBarContainer = document.getElementById('progressBarContainer');
+            progressBarContainer.innerHTML = '<div id="loadingText">Загрузка данных...</div>';
+
+            $.post("/get_stats_for_period", {
+                startDate: formatDate(startDate),
+                endDate: formatDate(endDate),
+                groupId: groupId
+            }, function(data, status){
+                progressBarContainer.innerHTML = '';
+
+                document.getElementById('totalPosts').innerText = data.totalPosts;
+                document.getElementById('totalLikes').innerText = data.totalLikes;
+                document.getElementById('totalComments').innerText = data.totalComments;
+                document.getElementById('totalViews').innerText = data.totalViews;
+                document.getElementById('averageLikesPerPost').innerText = data.averageLikesPerPost;
+                document.getElementById('averageCommentsPerPost').innerText = data.averageCommentsPerPost;
+                document.getElementById('averageViewsPerPost').innerText = data.averageViewsPerPost;
+                document.getElementById('engagementRate').innerText = data.engagementRate;
+                document.getElementById('postEngagementRate').innerText = data.postEngagementRate;
+
+                document.getElementById('statsContainer').style.display = 'block';
+            });
+        }
+
+        function formatDate(date) {
+            var day = date.getDate();
+            var month = date.getMonth() + 1;
+            var year = date.getFullYear();
+            return year + '-' + (month < 10 ? '0' : '') + month + '-' + (day < 10 ? '0' : '') + day;
+        }
+
+        // Добавляем функцию для проверки заполненности полей даты
+        function checkDates() {
+            var startDate = document.getElementById('startDate').value;
+            var endDate = document.getElementById('endDate').value;
+            var getStatsButton = document.getElementById('getStatsButton');
+
+            if (startDate && endDate) {
+                getStatsButton.disabled = false;
+            } else {
+                getStatsButton.disabled = true;
+            }
+        }
+
+        // Назначаем обработчики событий для полей даты
+        document.getElementById('startDate').addEventListener('input', checkDates);
+        document.getElementById('endDate').addEventListener('input', checkDates);
+    </script>
+</body>
+</html>
