@@ -578,5 +578,5 @@ def group_redirect():
 
 
 if __name__ == '__main__':
-    vk_data_handler = VKDataHandler("vk1.a.1_Xz5kUUFw8CX88ZfIJS3_a8oZlgCYqYV-6kozs42ZLUVivaBrFVgkmdJR0xuV7Yjj-KIHkRHTg5nIR2idJw1yMepBBggkPiiZRG6T1MOAeNklVcqaqMjdwUQjuBSrz1YnLYmvyoVM2L8RaGzTENlB3kyRqOAl3NXbWmR_Yz4tFPEYAIbK7YF8O0V_TNGJYtZwBhjaGsbtMvUr8a63nNIg")
+    vk_data_handler = VKDataHandler("vk1.a.1_Xz5kUUFw8CX88ZfIJS3_a8oZlgCYqYV-6kozs42ZLUVivaBrFVgkmdJR0xuV7Yjj-KIHkRHTg5nIR2idJ")
     app.run(debug=True)
